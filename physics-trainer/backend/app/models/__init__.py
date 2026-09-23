@@ -1,9 +1,10 @@
-from sqlalchemy import Column, Integer, String, DateTime, Enum as SQLEnum, ForeignKey, Boolean, Text, Numeric, JSON, UniqueConstraint
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Text, Numeric, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.database import Base
 from app.enums import UserRole, AnswerType, Difficulty, AttemptMode
+from app.pgtypes import UserRolePG, AnswerTypePG, DifficultyPG, AttemptModePG
 
 
 class User(Base):
@@ -11,7 +12,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    role = Column(SQLEnum(UserRole), nullable=False, default=UserRole.student)
+    role = Column(UserRolePG, nullable=False, default=UserRole.student)
     color = Column(String, nullable=False, default="#3B82F6")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -59,13 +60,13 @@ class Task(Base):
     topic_id = Column(Integer, ForeignKey("topics.id"), nullable=False)
     title = Column(String, nullable=False)
     text = Column(Text, nullable=True)
-    answer_type = Column(SQLEnum(AnswerType), nullable=False, default=AnswerType.choice)
+    answer_type = Column(AnswerTypePG, nullable=False, default=AnswerType.choice)
     correct_text = Column(String, nullable=True)
     correct_number = Column(Numeric, nullable=True)
     tolerance = Column(Numeric, nullable=True)
     unit = Column(String, nullable=True)
     points = Column(Integer, nullable=False, default=1)
-    difficulty = Column(SQLEnum(Difficulty), nullable=False, default=Difficulty.medium)
+    difficulty = Column(DifficultyPG, nullable=False, default=Difficulty.medium)
     explanation = Column(Text, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -166,7 +167,7 @@ class Attempt(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    mode = Column(SQLEnum(AttemptMode), nullable=False)
+    mode = Column(AttemptModePG, nullable=False)
     test_id = Column(Integer, ForeignKey("tests.id"), nullable=True)
     started_at = Column(DateTime(timezone=True), server_default=func.now())
     finished_at = Column(DateTime(timezone=True), nullable=True)

@@ -8,15 +8,13 @@ import sys
 sys.path.insert(0, "/app")
 
 from sqlalchemy import select
-from app.database import async_session_maker, engine, Base
+from app.database import async_session_maker
 from app.models import User, Topic, Article, Task, TaskOption
 from app.enums import UserRole, Difficulty, AnswerType
 
 
 async def seed():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    
+    # Схема создаётся миграциями Alembic в entrypoint — здесь только данные.
     async with async_session_maker() as db:
         # Проверка есть ли уже пользователи
         result = await db.execute(select(User))

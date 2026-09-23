@@ -122,10 +122,13 @@ async def answer_practice(
     result = await check_answer(task, data.chosen_option_id, data.given_text)
     is_correct = result["is_correct"]
     
-    # Расчет баллов
+    # Расчет баллов: вычитаем стоимость реально открытых подсказок
     points_earned = 0
     if is_correct:
-        hints_cost = sum(data.hints_used) if data.hints_used else 0
+        hints_cost = 0
+        if data.hints_used:
+            hint_result = await db.execute(select(Hint).where(Hint.id.in_(data.hints_used)))
+            hints_cost = sum(h.cost for h in hint_result.scalars().all())
         points_earned = max(0, task.points - hints_cost)
     
     # Сохранение ответа

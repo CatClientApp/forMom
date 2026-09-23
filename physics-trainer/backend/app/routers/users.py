@@ -14,9 +14,8 @@ router = APIRouter(prefix="/users", tags=["users"])
 @router.get("", response_model=list[UserResponse])
 async def get_users(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
 ):
-    """Получить список всех пользователей"""
+    """Получить список всех пользователей (открыто — нужно для переключателя без авторизации)"""
     result = await db.execute(select(User).order_by(User.id))
     return result.scalars().all()
 

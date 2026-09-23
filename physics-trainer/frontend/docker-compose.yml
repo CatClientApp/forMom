@@ -1,7 +1,44 @@
 services:
   web:
-    build: .
+    build:
+      context: .
+      args:
+        # Для доступа с других устройств укажите http://<ip-машины>:8000
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    restart: unless-stopped
     ports:
-      - "5173:80"
+      - "3000:80"
+    depends_on:
+      - backend
+
+  backend:
+    build: ../backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
-      VITE_API_URL: http://localhost:8000
+      DATABASE_URL: postgresql+asyncpg://physics:physics@db:5432/physics
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - ../backend/uploads:/app/uploads
+    ports:
+      - "8000:8000"
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: physics
+      POSTGRES_PASSWORD: physics
+      POSTGRES_DB: physics
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U physics -d physics"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

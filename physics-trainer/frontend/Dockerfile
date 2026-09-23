@@ -1,12 +1,23 @@
-FROM node:20-alpine
+# Build stage — VITE_API_URL is baked in at build time via ARG
+FROM node:20-alpine AS build
 
 WORKDIR /app
+
+ARG VITE_API_URL=http://localhost:8000
+ENV VITE_API_URL=$VITE_API_URL
 
 COPY package*.json ./
 RUN npm install
 
 COPY . .
+RUN npm run build
+
+# Serve stage — nginx on port 80, mapped to host 3000
+FROM nginx:1.27-alpine
+
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
-CMD ["npm", "run", "preview"]
+CMD ["nginx", "-g", "daemon off;"]

@@ -171,6 +171,7 @@ class TaskCreate(BaseModel):
     difficulty: Difficulty = Difficulty.medium
     explanation: Optional[str] = None
     options: Optional[List[TaskOptionIn]] = None
+    article_ids: List[int] = []
 
 
 class TaskUpdate(BaseModel):
@@ -185,6 +186,8 @@ class TaskUpdate(BaseModel):
     points: Optional[int] = None
     difficulty: Optional[Difficulty] = None
     explanation: Optional[str] = None
+    options: Optional[List[TaskOptionIn]] = None
+    article_ids: Optional[List[int]] = None
 
 
 class TaskResponse(BaseModel):
@@ -204,6 +207,8 @@ class TaskResponse(BaseModel):
     created_at: datetime
     images: List[TaskImageResponse] = []
     options: List[TaskOptionResponse] = []
+    hints: List[HintResponse] = []
+    article_ids: List[int] = []
 
     class Config:
         from_attributes = True
@@ -257,6 +262,25 @@ class TestResponse(TestBase):
     id: int
     created_by: int
     created_at: datetime
+    tasks: List[TaskResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+class TaskImageCreate(BaseModel):
+    url: str
+    order_index: int = 0
+
+
+class AttemptAnswerDetail(BaseModel):
+    id: int
+    task_id: int
+    chosen_option_id: Optional[int] = None
+    given_text: Optional[str] = None
+    is_correct: Optional[bool] = None
+    points_earned: int
+    hints_used: List[int] = []
 
     class Config:
         from_attributes = True

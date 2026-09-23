@@ -80,7 +80,7 @@ async def create_task(
             raise HTTPException(status_code=400, detail="Exactly one option must be correct")
     
     # Создание задачи
-    task_dict = task_data.model_dump(exclude={"options"})
+    task_dict = task_data.model_dump(exclude={"options", "article_ids"})
     new_task = Task(**task_dict, created_by=teacher.id)
     db.add(new_task)
     await db.flush()  # Чтобы получить ID
@@ -95,7 +95,11 @@ async def create_task(
                 order_index=opt.order_index if opt.order_index else idx
             )
             db.add(option)
-    
+
+    # Привязка статей
+    for aid in set(task_data.article_ids or []):
+        db.add(TaskArticle(task_id=new_task.id, article_id=aid))
+
     await db.commit()
     await db.refresh(new_task)
     return new_task
@@ -114,9 +118,32 @@ async def update_task(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     
-    update_data = task_data.model_dump(exclude_unset=True)
+    update_data = task_data.model_dump(exclude_unset=True, exclude={"options", "article_ids"})
     for field, value in update_data.items():
         setattr(task, field, value)
+
+    # Полная замена вариантов ответа
+    if task_data.options is not None:
+        if task.answer_type == "choice":
+            correct_count = sum(1 for opt in task_data.options if opt.is_correct)
+            if correct_count != 1:
+                raise HTTPException(status_code=400, detail="Exactly one option must be correct")
+        existing_options = await db.execute(select(TaskOption).where(TaskOption.task_id == task.id))
+        for opt in existing_options.scalars().all():
+            await db.delete(opt)
+        await db.flush()
+        for idx, opt in enumerate(task_data.options):
+            db.add(TaskOption(task_id=task.id, text=opt.text, is_correct=opt.is_correct,
+                              order_index=opt.order_index if opt.order_index else idx))
+
+    # Полная замена привязанных статей
+    if task_data.article_ids is not None:
+        existing_links = await db.execute(select(TaskArticle).where(TaskArticle.task_id == task.id))
+        for link in existing_links.scalars().all():
+            await db.delete(link)
+        await db.flush()
+        for aid in set(task_data.article_ids):
+            db.add(TaskArticle(task_id=task.id, article_id=aid))
     
     await db.commit()
     await db.refresh(task)

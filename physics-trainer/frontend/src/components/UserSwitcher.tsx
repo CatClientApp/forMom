@@ -1,13 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useUserStore } from '../store/userStore';
-import { getUsers } from '../api/endpoints';
-
-interface User {
-  id: number;
-  name: string;
-  role: 'teacher' | 'student';
-  color: string;
-}
+import apiClient from '../api/client';
+import type { User } from '../types';
 
 export default function UserSwitcher() {
   const { currentUserId, setCurrentUserId } = useUserStore();
@@ -17,11 +11,11 @@ export default function UserSwitcher() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        // Используем текущий ID если есть, иначе первый попавшийся
-        const data = await getUsers(currentUserId || 1);
+        // /api/users доступен без X-User-Id (список для переключателя)
+        const { data } = await apiClient.get<User[]>('/api/users');
         setUsers(data);
-        // Если текущий пользователь не выбран, выбираем первого
-        if (!currentUserId && data.length > 0) {
+        // Если текущий пользователь не выбран или выбран несуществующий — ставим первого
+        if ((!currentUserId || !data.some(u => u.id === currentUserId)) && data.length > 0) {
           setCurrentUserId(data[0].id);
         }
       } catch (error) {

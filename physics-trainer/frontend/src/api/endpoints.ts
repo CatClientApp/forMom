@@ -1,6 +1,17 @@
 import apiClient from './client';
 import type { User, Topic, Article, Task, Test, Attempt, StatsSummary } from '../types';
 
+/**
+ * Список пользователей. Отдельный клиент без X-User-Id —
+ * чтобы гость (без выбранного пользователя) мог открыть приложение и выбрать себя.
+ */
+export const getUsers = async (): Promise<User[]> => {
+  const base = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const res = await fetch(`${base}/api/users`);
+  if (!res.ok) throw new Error('Failed to load users');
+  return res.json();
+};
+
 // USERS
 export const usersApi = {
   getAll: () => apiClient.get<User[]>('/api/users'),

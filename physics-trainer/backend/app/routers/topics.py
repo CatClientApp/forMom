@@ -66,7 +66,7 @@ async def create_topic(
     new_topic = Topic(**topic_data.model_dump())
     db.add(new_topic)
     await db.commit()
-    await db.refresh(new_topic)
+    await db.refresh(new_topic, attribute_names=["children"])
     
     # Возвращаем с children
     result = await db.execute(select(Topic).where(Topic.id == new_topic.id))
@@ -92,7 +92,7 @@ async def update_topic(
         setattr(topic, field, value)
     
     await db.commit()
-    await db.refresh(topic)
+    await db.refresh(topic, attribute_names=["children"])
     return {**topic.__dict__, "children": []}
 
 

@@ -54,7 +54,7 @@ async def create_article(
     new_article = Article(**article_data.model_dump())
     db.add(new_article)
     await db.commit()
-    await db.refresh(new_article)
+    await db.refresh(new_article, attribute_names=[])
     return new_article
 
 
@@ -76,7 +76,7 @@ async def update_article(
         setattr(article, field, value)
     
     await db.commit()
-    await db.refresh(article)
+    await db.refresh(article, attribute_names=[])
     return article
 
 

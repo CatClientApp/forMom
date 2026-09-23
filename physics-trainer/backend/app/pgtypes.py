@@ -1,21 +1,18 @@
-"""PostgreSQL enum types used by SQLAlchemy models.
+"""Column types for "enum" fields used by SQLAlchemy models.
 
-Each type is declared once with an explicit PG name and create_type=False,
-so SQLAlchemy never emits CREATE TYPE / DROP TYPE DDL. Alembic migrations
-own the lifecycle of these types (created explicitly in 0001_initial).
+We deliberately do NOT use native PostgreSQL ENUM types: CREATE TYPE is not
+transactional, which makes Alembic re-runs fragile (DuplicateObjectError),
+and adding a value later requires ALTER TYPE. Instead everything is stored
+as VARCHAR; allowed values are enforced at the API layer via Pydantic
+Literal/Enum schemas (app.enums). Use EnumVarchar from portable_types so
+python str-Enum members are still transparently saved/loaded.
 """
-from sqlalchemy.dialects.postgresql import ENUM as PgEnum
-
 from app.enums import AnswerType, AttemptMode, Difficulty, UserRole
+from app.portable_types import EnumVarchar
 
 
-def pg_enum(py_enum, name: str) -> PgEnum:
-    return PgEnum(
-        py_enum,
-        name=name,
-        values_callable=lambda e: [m.value for m in e],
-        create_type=False,
-    )
+def pg_enum(py_enum, name: str) -> EnumVarchar:
+    return EnumVarchar(py_enum, length=30)
 
 
 UserRolePG = pg_enum(UserRole, "userrole")

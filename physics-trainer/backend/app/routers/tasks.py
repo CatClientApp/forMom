@@ -11,6 +11,62 @@ from app.deps import get_current_user, require_teacher
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
+TASK_ATTRS = ["images", "options", "hints", "task_articles"]
+
+
+async def _task_dict(task: Task) -> dict:
+    """Serialize a Task (with relations) into a plain dict for Pydantic.
+
+    Async SQLAlchemy cannot lazy-load relationships during response
+    serialization (MissingGreenlet), so we build the dict explicitly.
+    """
+    return {
+        "id": task.id,
+        "topic_id": task.topic_id,
+        "title": task.title,
+        "text": task.text,
+        "answer_type": task.answer_type,
+        "correct_text": task.correct_text,
+        "correct_number": task.correct_number,
+        "tolerance": task.tolerance,
+        "unit": task.unit,
+        "points": task.points,
+        "difficulty": task.difficulty,
+        "explanation": task.explanation,
+        "created_by": task.created_by,
+        "created_at": task.created_at,
+        "images": [
+            {"id": i.id, "url": i.url, "order_index": i.order_index}
+            for i in sorted(task.images, key=lambda x: x.order_index)
+        ],
+        "options": [
+            {"id": o.id, "text": o.text, "is_correct": o.is_correct, "order_index": o.order_index}
+            for o in sorted(task.options, key=lambda x: x.order_index)
+        ],
+        "hints": [
+            {"id": h.id, "topic_id": h.topic_id, "tier": h.tier, "cost": h.cost, "content": h.content}
+            for h in sorted(task.hints, key=lambda x: (x.tier, x.id))
+        ],
+        "article_ids": [ta.article_id for ta in task.task_articles],
+    }
+
+
+async def _load_and_serialize(db: AsyncSession, task: Task) -> dict:
+    from sqlalchemy.orm import selectinload
+    result = await db.execute(
+        select(Task)
+        .where(Task.id == task.id)
+        .options(
+            selectinload(Task.images),
+            selectinload(Task.options),
+            selectinload(Task.hints),
+            selectinload(Task.task_articles),
+        )
+    )
+    full = result.scalar_one()
+    return await _task_dict(full)
+
+
 @router.get("", response_model=list[TaskResponse])
 async def get_tasks(
     topic_id: int | None = None,
@@ -54,8 +110,7 @@ async def get_task(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     
-    await db.refresh(task)
-    return task
+    return await _load_and_serialize(db, task)
 
 
 @router.post("", response_model=TaskResponse, status_code=201)
@@ -101,8 +156,7 @@ async def create_task(
         db.add(TaskArticle(task_id=new_task.id, article_id=aid))
 
     await db.commit()
-    await db.refresh(new_task)
-    return new_task
+    return await _load_and_serialize(db, new_task)
 
 
 @router.patch("/{task_id}", response_model=TaskResponse)
@@ -146,8 +200,7 @@ async def update_task(
             db.add(TaskArticle(task_id=task.id, article_id=aid))
     
     await db.commit()
-    await db.refresh(task)
-    return task
+    return await _load_and_serialize(db, task)
 
 
 @router.delete("/{task_id}", status_code=204)

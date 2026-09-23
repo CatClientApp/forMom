@@ -16,32 +16,17 @@ branch_labels = None
 depends_on = None
 
 
-def _create_enum(name: str, values: list[str]) -> None:
-    """Create an enum type only if it doesn't exist (idempotent)."""
-    joined = ", ".join(f"'{v}'" for v in values)
-    op.execute(
-        f"""
-        DO $$ BEGIN
-            CREATE TYPE {name} AS ENUM ({joined});
-        EXCEPTION WHEN duplicate_object THEN NULL;
-        END $$;
-        """
-    )
-
-
 def upgrade() -> None:
-    # Create enum types (IF NOT EXISTS via DO block — safe on re-run)
-    _create_enum('userrole', ['teacher', 'student'])
-    _create_enum('answertype', ['choice', 'numeric', 'text'])
-    _create_enum('difficulty', ['easy', 'medium', 'hard'])
-    _create_enum('attemptmode', ['practice', 'test'])
+    # NOTE: "enum" columns are plain VARCHAR here (no native PG ENUM types).
+    # Native enums caused Alembic DuplicateObjectError headaches; allowed
+    # values are enforced by Pydantic schemas on the API layer.
 
     # Users table
     op.create_table(
         'users',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('name', sa.String(), nullable=False),
-        sa.Column('role', sa.Enum('teacher', 'student', name='userrole', create_type=False), nullable=False, server_default='student'),
+        sa.Column('role', sa.String(length=20), nullable=False, server_default='student'),
         sa.Column('color', sa.String(), nullable=False, server_default='#3B82F6'),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now()),
         sa.PrimaryKeyConstraint('id')
@@ -79,13 +64,13 @@ def upgrade() -> None:
         sa.Column('topic_id', sa.Integer(), nullable=False),
         sa.Column('title', sa.String(), nullable=False),
         sa.Column('text', sa.Text(), nullable=True),
-        sa.Column('answer_type', sa.Enum('choice', 'numeric', 'text', name='answertype', create_type=False), nullable=False, server_default='choice'),
+        sa.Column('answer_type', sa.String(length=20), nullable=False, server_default='choice'),
         sa.Column('correct_text', sa.Text(), nullable=True),
         sa.Column('correct_number', sa.Numeric(), nullable=True),
         sa.Column('tolerance', sa.Numeric(), nullable=True),
         sa.Column('unit', sa.String(), nullable=True),
         sa.Column('points', sa.Integer(), nullable=False, server_default='1'),
-        sa.Column('difficulty', sa.Enum('easy', 'medium', 'hard', name='difficulty', create_type=False), nullable=False, server_default='easy'),
+        sa.Column('difficulty', sa.String(length=20), nullable=False, server_default='easy'),
         sa.Column('explanation', sa.Text(), nullable=True),
         sa.Column('created_by', sa.Integer(), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now()),
@@ -171,7 +156,7 @@ def upgrade() -> None:
         'attempts',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('user_id', sa.Integer(), nullable=False),
-        sa.Column('mode', sa.Enum('practice', 'test', name='attemptmode', create_type=False), nullable=False),
+        sa.Column('mode', sa.String(length=20), nullable=False),
         sa.Column('test_id', sa.Integer(), nullable=True),
         sa.Column('started_at', sa.DateTime(timezone=True), server_default=sa.func.now()),
         sa.Column('finished_at', sa.DateTime(timezone=True), nullable=True),
@@ -214,7 +199,3 @@ def downgrade() -> None:
     op.drop_table('articles')
     op.drop_table('topics')
     op.drop_table('users')
-    op.execute("DROP TYPE attemptmode")
-    op.execute("DROP TYPE difficulty")
-    op.execute("DROP TYPE answertype")
-    op.execute("DROP TYPE userrole")

@@ -133,7 +133,6 @@ class TaskImageResponse(BaseModel):
 
 # === HINT ===
 class HintBase(BaseModel):
-    task_id: Optional[int] = None
     topic_id: Optional[int] = None
     tier: int
     cost: int = 0

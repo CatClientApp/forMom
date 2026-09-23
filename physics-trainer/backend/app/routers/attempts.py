@@ -91,7 +91,7 @@ async def start_practice(
     )
     db.add(attempt)
     await db.commit()
-    await db.refresh(attempt)
+    await db.refresh(attempt, attribute_names=["answers"])
     
     return {"attempt_id": attempt.id}
 

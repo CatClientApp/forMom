@@ -33,7 +33,7 @@ async def get_test(
     if not test:
         raise HTTPException(status_code=404, detail="Test not found")
     
-    await db.refresh(test)
+    await db.refresh(test, attribute_names=["test_tasks"])
     return test
 
 
@@ -47,7 +47,7 @@ async def create_test(
     new_test = Test(**test_data.model_dump(), created_by=teacher.id)
     db.add(new_test)
     await db.commit()
-    await db.refresh(new_test)
+    await db.refresh(new_test, attribute_names=["test_tasks"])
     return new_test
 
 
@@ -69,7 +69,7 @@ async def update_test(
         setattr(test, field, value)
     
     await db.commit()
-    await db.refresh(test)
+    await db.refresh(test, attribute_names=["test_tasks"])
     return test
 
 
